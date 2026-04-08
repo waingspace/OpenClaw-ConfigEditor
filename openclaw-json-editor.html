@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenClaw-ConfigEditor OpenClaw-可视化编辑器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0f14;
+  --bg2: #13151c;
+  --bg3: #1a1d27;
+  --bg4: #21253300;
+  --surface: #1e2130;
+  --surface2: #252a3a;
+  --surface3: #2d3347;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --accent: #6c63ff;
+  --accent2: #a78bfa;
+  --accent3: #38bdf8;
+  --accent4: #34d399;
+  --accent5: #fb923c;
+  --text: #e8eaf0;
+  --text2: #9da3b4;
+  --text3: #5a6178;
+  --danger: #f87171;
+  --success: #34d399;
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.45);
+  --glow: 0 0 0 1px rgba(108,99,255,0.3), 0 4px 20px rgba(108,99,255,0.15);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background decoration */
+body::before {
+  content: '';
+  position: fixed;
+  top: -200px; left: -200px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(108,99,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -150px; right: -100px;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(56,189,248,0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 48px;
+}
+.logo {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(108,99,255,0.4);
+}
+.header-text h1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+.header-text p {
+  font-size: 13px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+/* ── Step indicator ── */
+.steps-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 36px;
+}
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text3);
+  font-weight: 500;
+  font-family: var(--font-display);
+  letter-spacing: 0.3px;
+  transition: color 0.3s;
+}
+.step-item.active { color: var(--accent2); }
+.step-item.done { color: var(--accent4); }
+.step-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: var(--surface);
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+.step-item.active .step-dot {
+  border-color: var(--accent);
+  background: rgba(108,99,255,0.2);
+  color: var(--accent2);
+  box-shadow: 0 0 12px rgba(108,99,255,0.3);
+}
+.step-item.done .step-dot {
+  border-color: var(--accent4);
+  background: rgba(52,211,153,0.15);
+  color: var(--accent4);
+}
+.step-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  margin: 0 10px;
+  min-width: 30px;
+}
+
+/* ── Card ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  animation: fadeUp 0.35s ease both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title .icon {
+  width: 28px; height: 28px;
+  background: var(--surface3);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+}
+
+/* ── Textarea ── */
+.json-textarea {
+  width: 100%;
+  min-height: 200px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.json-textarea:focus {
+  border-color: rgba(108,99,255,0.5);
+  box-shadow: var(--glow);
+}
+.json-textarea::placeholder { color: var(--text3); }
+
+/* ── Buttons ── */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: var(--radius);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.18s ease;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(108,99,255,0.35);
+}
+.btn-primary:hover { box-shadow: 0 6px 24px rgba(108,99,255,0.5); transform: translateY(-1px); }
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text2);
+  border-color: var(--border2);
+}
+.btn-secondary:hover { background: var(--surface3); color: var(--text); }
+.btn-success {
+  background: linear-gradient(135deg, #059669, var(--accent4));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(52,211,153,0.3);
+}
+.btn-success:hover { box-shadow: 0 6px 20px rgba(52,211,153,0.45); transform: translateY(-1px); }
+.btn-ghost {
+  background: transparent;
+  color: var(--text3);
+  border-color: var(--border);
+}
+.btn-ghost:hover { color: var(--text2); border-color: var(--border2); }
+
+/* ── Error / Info ── */
+.msg-err {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: rgba(248,113,113,0.1);
+  border: 1px solid rgba(248,113,113,0.25);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  color: var(--danger);
+  font-family: var(--font-mono);
+  display: none;
+}
+.msg-err.visible { display: flex; }
+
+/* ── Form fields ── */
+.form-grid {
+  display: grid;
+  gap: 14px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-size: 11.5px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text3);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.field-path {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  background: var(--surface3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0.7;
+}
+.field-type-badge {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 2px 7px;
+  border-radius: 20px;
+  border: 1px solid;
+  margin-left: auto;
+}
+.tb-string { color: var(--accent3); border-color: rgba(56,189,248,0.3); background: rgba(56,189,248,0.07); }
+.tb-number { color: var(--accent5); border-color: rgba(251,146,60,0.3); background: rgba(251,146,60,0.07); }
+.tb-boolean { color: var(--accent4); border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.07); }
+.tb-array  { color: var(--accent2); border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.07); }
+.tb-object { color: #f9a8d4; border-color: rgba(249,168,212,0.3); background: rgba(249,168,212,0.07); }
+
+.field input[type=text],
+.field input[type=number],
+.field select,
+.field textarea.small-ta {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 13px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--text);
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.field input:focus,
+.field select:focus,
+.field textarea.small-ta:focus {
+  border-color: rgba(108,99,255,0.5);
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.1);
+}
+.field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a6178' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 34px;
+  cursor: pointer;
+}
+.field textarea.small-ta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  min-height: 90px;
+  resize: vertical;
+}
+
+/* Radio group */
+.radio-group, .check-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.radio-opt, .check-opt {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.radio-opt input[type=radio],
+.check-opt input[type=checkbox] {
+  display: none;
+}
+.radio-opt label, .check-opt label {
+  padding: 7px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12.5px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.18s;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.radio-opt input[type=radio]:checked + label {
+  background: rgba(52,211,153,0.15);
+  border-color: rgba(52,211,153,0.4);
+  color: var(--accent4);
+}
+.check-opt input[type=checkbox]:checked + label {
+  background: rgba(108,99,255,0.15);
+  border-color: rgba(108,99,255,0.4);
+  color: var(--accent2);
+}
+.radio-opt label:hover, .check-opt label:hover {
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+/* Add item row */
+.add-item-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.add-item-row input {
+  flex: 1;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+}
+.add-item-row input:focus { border-color: rgba(108,99,255,0.5); }
+.btn-add {
+  padding: 7px 14px;
+  background: var(--surface2);
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius);
+  color: var(--text3);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: var(--font-display);
+  white-space: nowrap;
+}
+.btn-add:hover { border-color: var(--accent); color: var(--accent2); }
+
+/* Object nested */
+.nested-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  margin-top: 2px;
+}
+.nested-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.nested-label {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  letter-spacing: 0.3px;
+}
+.nested-count {
+  font-size: 10.5px;
+  color: var(--text3);
+  font-family: var(--font-mono);
+  background: var(--surface3);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+/* ── Output ── */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg2);
+  border-radius: var(--radius);
+  width: fit-content;
+  margin-bottom: 14px;
+}
+.tab {
+  padding: 6px 16px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text3);
+  transition: all 0.18s;
+  letter-spacing: 0.3px;
+}
+.tab:hover { color: var(--text2); }
+.tab.active {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+.output-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: #a9b1d6;
+  white-space: pre;
+  overflow: auto;
+  max-height: 420px;
+}
+
+/* JSON syntax highlight */
+.jk  { color: #7aa2f7; }
+.js  { color: #9ece6a; }
+.jn  { color: #ff9e64; }
+.jb  { color: #bb9af7; }
+.jnu { color: #f7768e; }
+
+/* Status toast */
+.toast {
+  position: fixed;
+  bottom: 32px; right: 32px;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 12px 20px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--shadow);
+  z-index: 999;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: none;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast-icon { font-size: 16px; }
+
+/* ── Stats bar ── */
+.stats-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.stat-chip {
+  padding: 5px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 11.5px;
+  color: var(--text3);
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.stat-chip .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+}
+
+/* Divider section title */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0 14px;
+}
+.section-divider span {
+  font-size: 11px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text3);
+  white-space: nowrap;
+}
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .page { padding: 24px 16px 60px; }
+  .card { padding: 20px 18px; }
+  .header { margin-bottom: 32px; }
+  .steps-bar { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">⬡</div>
+    <div class="header-text">
+      <h1>JSON 可视化编辑器</h1>
+      <p>将 JSON 数据转换为可交互表单，编辑后还原为标准 JSON</p>
+    </div>
+  </header>
+
+  <!-- Steps -->
+  <div class="steps-bar" id="steps-bar">
+    <div class="step-item active" id="step-ind-1">
+      <div class="step-dot">1</div>
+      <span>导入</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item" id="step-ind-2">
+      <div class="step-dot">2</div>
+      <span>编辑</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item" id="step-ind-3">
+      <div class="step-dot">3</div>
+      <span>导出</span>
+    </div>
+  </div>
+
+  <!-- Step 1: Input -->
+  <div id="panel-input">
+    <div class="card">
+      <div class="card-title">
+        <div class="icon">{ }</div>
+        粘贴 JSON 内容
+      </div>
+      <textarea
+        class="json-textarea"
+        id="json-input"
+        placeholder='粘贴您的 JSON 数据，例如：
+{
+  "name": "Alice",
+  "age": 25,
+  "active": true,
+  "role": "admin"
+}'
+      ></textarea>
+      <div class="msg-err" id="parse-err">
+        <span>⚠</span>
+        <span id="parse-err-msg"></span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="parseJSON()">
+          <span>▶</span> 解析并生成表单
+        </button>
+        <button class="btn btn-secondary" onclick="loadSample()">
+          加载示例数据
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Form -->
+  <div id="panel-form" style="display:none">
+    <div class="card">
+      <div class="card-title">
+        <div class="icon">✏</div>
+        表单编辑
+      </div>
+      <div class="stats-bar" id="stats-bar"></div>
+      <div class="form-grid" id="form-container"></div>
+      <div class="btn-row" style="margin-top:24px; padding-top:20px; border-top:1px solid var(--border)">
+        <button class="btn btn-success" onclick="generateOutput()">
+          <span>⬇</span> 生成 JSON
+        </button>
+        <button class="btn btn-secondary" onclick="resetToInput()">
+          ← 返回输入
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Output -->
+  <div id="panel-output" style="display:none">
+    <div class="card">
+      <div class="card-title">
+        <div class="icon">⬇</div>
+        输出结果
+      </div>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'formatted')">格式化</div>
+        <div class="tab" onclick="switchTab(this,'minified')">压缩</div>
+        <div class="tab" onclick="switchTab(this,'highlighted')">高亮</div>
+      </div>
+      <div class="output-box" id="output-box"></div>
+      <div class="btn-row" style="margin-top:16px">
+        <button class="btn btn-primary" onclick="copyOutput()">
+          <span>⎘</span> 复制 JSON
+        </button>
+        <button class="btn btn-secondary" onclick="downloadOutput()">
+          <span>↓</span> 下载文件
+        </button>
+        <button class="btn btn-ghost" onclick="backToForm()">← 返回编辑</button>
+        <button class="btn btn-ghost" onclick="resetAll()">重新开始</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toast-icon"></span>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+/* =====================================================
+   State
+===================================================== */
+let parsedData = null;
+let currentOutput = { formatted: '', minified: '', highlighted: '' };
+let outputMode = 'formatted';
+let fieldCount = { total: 0, string: 0, number: 0, boolean: 0, array: 0, object: 0 };
+
+/* =====================================================
+   Config
+===================================================== */
+const BOOL_KEYS = ['enabled','active','streaming','default','reasoning','ask','allowSelfSignedCerts','dark','visible','required','checked','selected'];
+const ENUM_MAP = {
+  mode: ['api_key','token','local','gateway','merge','replace','websocket','polling','sse','full','coding','minimal'],
+  provider: ['modelstudio','openai','anthropic','azure','groq','cohere'],
+  api: ['openai-completions','anthropic','azure-openai','groq','cohere'],
+  connectionMode: ['websocket','polling','sse'],
+  bind: ['lan','localhost','all','0.0.0.0'],
+  profile: ['full','coding','minimal','standard'],
+  security: ['full','standard','minimal','none'],
+  type: ['single_select','multi_select','rank_priorities'],
+  travel_mode: ['driving','walking','transit','bicycling'],
+  status: ['active','inactive','pending','disabled'],
+  level: ['debug','info','warn','error'],
+  theme: ['light','dark','auto'],
+  language: ['zh-CN','en-US','ja-JP','ko-KR'],
+};
+
+/* =====================================================
+   Toast
+===================================================== */
+let toastTimer;
+function showToast(msg, icon = '✓', duration = 2500) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-icon').textContent = icon;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+/* =====================================================
+   Step indicator
+===================================================== */
+function setStep(n) {
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById('step-ind-' + i);
+    el.className = 'step-item' + (i < n ? ' done' : i === n ? ' active' : '');
+    el.querySelector('.step-dot').textContent = i < n ? '✓' : String(i);
+  }
+}
+
+/* =====================================================
+   Sample data
+===================================================== */
+function loadSample() {
+  document.getElementById('json-input').value = JSON.stringify({
+    meta: { version: "2026.4.5", lastUpdated: "2026-04-07T17:03:49Z" },
+    server: {
+      host: "localhost",
+      port: 18789,
+      mode: "local",
+      enabled: true,
+      streaming: true
+    },
+    auth: {
+      mode: "api_key",
+      required: true,
+      providers: ["openai","anthropic","modelstudio"]
+    },
+    model: {
+      id: "qwen3-max",
+      provider: "modelstudio",
+      contextWindow: 262144,
+      maxTokens: 65536,
+      reasoning: false,
+      input: ["text","image"]
+    },
+    logging: {
+      level: "info",
+      enabled: true
+    }
+  }, null, 2);
+  hideParsErr();
+}
+
+/* =====================================================
+   Parse
+===================================================== */
+function parseJSON() {
+  const raw = document.getElementById('json-input').value.trim();
+  hideParsErr();
+  if (!raw) { showParsErr('请输入 JSON 内容'); return; }
+  try {
+    parsedData = JSON.parse(raw);
+    fieldCount = { total: 0, string: 0, number: 0, boolean: 0, array: 0, object: 0 };
+    renderForm(parsedData);
+    document.getElementById('panel-input').style.display = 'none';
+    document.getElementById('panel-form').style.display = '';
+    document.getElementById('panel-output').style.display = 'none';
+    setStep(2);
+    showToast('解析成功，共 ' + fieldCount.total + ' 个字段', '✓');
+  } catch(e) {
+    showParsErr('JSON 语法错误：' + e.message);
+  }
+}
+
+function showParsErr(msg) {
+  const el = document.getElementById('parse-err');
+  document.getElementById('parse-err-msg').textContent = msg;
+  el.classList.add('visible');
+}
+function hideParsErr() {
+  document.getElementById('parse-err').classList.remove('visible');
+}
+
+/* =====================================================
+   Render Form
+===================================================== */
+function renderForm(data) {
+  const container = document.getElementById('form-container');
+  container.innerHTML = '';
+  buildFields(data, '', container, 0);
+
+  // Stats bar
+  const sb = document.getElementById('stats-bar');
+  const types = [
+    { key:'total', label:'字段总数', color:'var(--accent2)' },
+    { key:'string', label:'文本', color:'var(--accent3)' },
+    { key:'number', label:'数值', color:'var(--accent5)' },
+    { key:'boolean', label:'布尔', color:'var(--accent4)' },
+    { key:'array', label:'数组', color:'var(--accent2)' },
+    { key:'object', label:'对象', color:'#f9a8d4' },
+  ];
+  sb.innerHTML = types.filter(t => fieldCount[t.key] > 0).map(t =>
+    `<div class="stat-chip"><span class="dot" style="background:${t.color}"></span>${t.key==='total'?'共':''} ${fieldCount[t.key]} ${t.label}</div>`
+  ).join('');
+}
+
+function buildFields(obj, prefix, container, depth) {
+  let count = 0;
+  const entries = Object.entries(obj);
+
+  // Group by "object" vs "leaf" for visual sectioning at top level
+  entries.forEach(([key, val]) => {
+    const path = prefix ? prefix + '.' + key : key;
+    fieldCount.total++;
+    count++;
+
+    if (val === null || val === undefined) {
+      appendTextField(container, key, path, '', 'null');
+    } else if (typeof val === 'boolean' || BOOL_KEYS.includes(key.toLowerCase())) {
+      fieldCount.boolean++;
+      appendBoolField(container, key, path, typeof val === 'boolean' ? val : !!val);
+    } else if (typeof val === 'number') {
+      fieldCount.number++;
+      appendNumberField(container, key, path, val);
+    } else if (typeof val === 'string') {
+      fieldCount.string++;
+      if (ENUM_MAP[key]) {
+        appendSelectField(container, key, path, val, ENUM_MAP[key]);
+      } else {
+        appendTextField(container, key, path, val, 'string');
+      }
+    } else if (Array.isArray(val)) {
+      fieldCount.array++;
+      appendArrayField(container, key, path, val, depth);
+    } else if (typeof val === 'object') {
+      fieldCount.object++;
+      appendObjectField(container, key, path, val, depth);
+      fieldCount.total--; count--; // object itself isn't a leaf
+    } else {
+      appendTextField(container, key, path, String(val), 'string');
+    }
+  });
+  return count;
+}
+
+/* ── Field builders ── */
+function mkField(key, path, typeBadge, typeCls) {
+  const d = document.createElement('div');
+  d.className = 'field';
+  const lrow = document.createElement('div');
+  lrow.className = 'field-label';
+  lrow.textContent = key;
+  const pathEl = document.createElement('span');
+  pathEl.className = 'field-path';
+  pathEl.textContent = path;
+  lrow.appendChild(pathEl);
+  if (typeBadge) {
+    const badge = document.createElement('span');
+    badge.className = 'field-type-badge ' + (typeCls || '');
+    badge.textContent = typeBadge;
+    lrow.appendChild(badge);
+  }
+  d.appendChild(lrow);
+  return d;
+}
+
+function appendTextField(container, key, path, val, type) {
+  const d = mkField(key, path, type === 'null' ? 'null' : 'string', 'tb-string');
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.value = val;
+  inp.dataset.path = path; inp.dataset.type = 'string';
+  d.appendChild(inp); container.appendChild(d);
+}
+
+function appendNumberField(container, key, path, val) {
+  const d = mkField(key, path, 'number', 'tb-number');
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.value = val; inp.step = 'any';
+  inp.dataset.path = path; inp.dataset.type = 'number';
+  d.appendChild(inp); container.appendChild(d);
+}
+
+function appendBoolField(container, key, path, val) {
+  const d = mkField(key, path, 'boolean', 'tb-boolean');
+  const g = document.createElement('div'); g.className = 'radio-group';
+  const uid = 'r_' + path.replace(/[^a-z0-9]/gi,'_') + '_' + Math.random().toString(36).slice(2,6);
+  [['true','是 (true)'],['false','否 (false)']].forEach(([v,label]) => {
+    const wrap = document.createElement('div'); wrap.className = 'radio-opt';
+    const r = document.createElement('input');
+    r.type = 'radio'; r.name = uid; r.id = uid + v;
+    r.value = v; r.dataset.path = path; r.dataset.type = 'boolean';
+    if ((v === 'true') === val) r.checked = true;
+    const lbl = document.createElement('label'); lbl.htmlFor = uid + v; lbl.textContent = label;
+    wrap.appendChild(r); wrap.appendChild(lbl);
+    g.appendChild(wrap);
+  });
+  d.appendChild(g); container.appendChild(d);
+}
+
+function appendSelectField(container, key, path, val, options) {
+  const d = mkField(key, path, 'enum', 'tb-string');
+  const sel = document.createElement('select');
+  sel.dataset.path = path; sel.dataset.type = 'string';
+  const allOpts = [...new Set([val, ...options])];
+  allOpts.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o; opt.textContent = o;
+    if (o === val) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  const customOpt = document.createElement('option');
+  customOpt.value = '__custom__'; customOpt.textContent = '✏ 自定义值...';
+  sel.appendChild(customOpt);
+
+  const customInp = document.createElement('input');
+  customInp.type = 'text'; customInp.style.display = 'none';
+  customInp.style.marginTop = '8px';
+  customInp.dataset.path = path; customInp.dataset.type = 'string';
+  customInp.placeholder = '输入自定义值';
+
+  sel.onchange = () => {
+    if (sel.value === '__custom__') {
+      customInp.style.display = ''; customInp.dataset.active = '1'; customInp.focus();
+    } else {
+      customInp.style.display = ''; delete customInp.dataset.active;
+      customInp.style.display = 'none';
+    }
+  };
+  d.appendChild(sel); d.appendChild(customInp); container.appendChild(d);
+}
+
+function appendArrayField(container, key, path, val, depth) {
+  const simple = val.every(v => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean');
+
+  if (simple && val.length <= 15) {
+    const d = mkField(key, path, `array[${val.length}]`, 'tb-array');
+    const g = document.createElement('div'); g.className = 'check-group';
+
+    val.forEach(v => {
+      const uid = 'cb_' + path.replace(/[^a-z0-9]/gi,'_') + '_' + String(v).replace(/\s/g,'_') + '_' + Math.random().toString(36).slice(2,5);
+      const wrap = document.createElement('div'); wrap.className = 'check-opt';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.id = uid;
+      cb.value = String(v); cb.dataset.path = path; cb.dataset.type = 'array_item'; cb.checked = true;
+      const lbl = document.createElement('label'); lbl.htmlFor = uid; lbl.textContent = String(v);
+      wrap.appendChild(cb); wrap.appendChild(lbl); g.appendChild(wrap);
+    });
+
+    const addRow = document.createElement('div'); addRow.className = 'add-item-row';
+    const addInp = document.createElement('input');
+    addInp.type = 'text'; addInp.placeholder = '添加新项目...';
+    const addBtn = document.createElement('button'); addBtn.className = 'btn-add'; addBtn.textContent = '+ 添加';
+    addBtn.onclick = () => {
+      const v = addInp.value.trim(); if (!v) return;
+      const uid2 = 'cb_' + path.replace(/[^a-z0-9]/gi,'_') + '_' + v.replace(/\s/g,'_') + '_' + Math.random().toString(36).slice(2,5);
+      const wrap = document.createElement('div'); wrap.className = 'check-opt';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.id = uid2;
+      cb.value = v; cb.dataset.path = path; cb.dataset.type = 'array_item'; cb.checked = true;
+      const lbl = document.createElement('label'); lbl.htmlFor = uid2; lbl.textContent = v;
+      wrap.appendChild(cb); wrap.appendChild(lbl); g.appendChild(wrap);
+      addInp.value = '';
+    };
+    addInp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); addBtn.click(); } };
+    addRow.appendChild(addInp); addRow.appendChild(addBtn);
+    d.appendChild(g); d.appendChild(addRow); container.appendChild(d);
+  } else {
+    const d = mkField(key, path, `array[${val.length}]`, 'tb-array');
+    const ta = document.createElement('textarea');
+    ta.className = 'small-ta'; ta.dataset.path = path; ta.dataset.type = 'array_json';
+    ta.value = JSON.stringify(val, null, 2);
+    d.appendChild(ta); container.appendChild(d);
+  }
+}
+
+function appendObjectField(container, key, path, val, depth) {
+  const subCount = Object.keys(val).length;
+  const d = document.createElement('div'); d.className = 'field';
+  const lrow = document.createElement('div'); lrow.className = 'field-label';
+  lrow.textContent = key;
+  const pathEl = document.createElement('span'); pathEl.className = 'field-path'; pathEl.textContent = path; lrow.appendChild(pathEl);
+  const badge = document.createElement('span'); badge.className = 'field-type-badge tb-object'; badge.textContent = 'object'; lrow.appendChild(badge);
+  d.appendChild(lrow);
+
+  const nest = document.createElement('div'); nest.className = 'nested-card';
+  const nhdr = document.createElement('div'); nhdr.className = 'nested-header';
+  const nlbl = document.createElement('span'); nlbl.className = 'nested-label'; nlbl.textContent = path;
+  const ncount = document.createElement('span'); ncount.className = 'nested-count'; ncount.textContent = subCount + ' 个字段';
+  nhdr.appendChild(nlbl); nhdr.appendChild(ncount);
+  nest.appendChild(nhdr);
+  const subGrid = document.createElement('div'); subGrid.className = 'form-grid';
+  buildFields(val, path, subGrid, depth + 1);
+  nest.appendChild(subGrid);
+  d.appendChild(nest); container.appendChild(d);
+}
+
+/* =====================================================
+   Collect values
+===================================================== */
+function collectValues() {
+  const result = {};
+  const processed = new Set();
+  const all = document.getElementById('form-container').querySelectorAll('[data-path][data-type]');
+
+  all.forEach(el => {
+    const path = el.dataset.path; const type = el.dataset.type;
+    if (!path || !type) return;
+
+    if (type === 'array_item') {
+      if (processed.has(path)) return;
+      processed.add(path);
+      const items = [...document.getElementById('form-container').querySelectorAll(`[data-path="${CSS.escape(path)}"][data-type="array_item"]`)];
+      setByPath(result, path, items.filter(i => i.checked).map(i => i.value));
+      return;
+    }
+    if (type === 'boolean') {
+      if (processed.has(path)) return;
+      processed.add(path);
+      const radios = [...document.getElementById('form-container').querySelectorAll(`[data-path="${CSS.escape(path)}"][data-type="boolean"]`)];
+      const chk = radios.find(r => r.checked);
+      if (chk) setByPath(result, path, chk.value === 'true');
+      return;
+    }
+    if (el.tagName === 'SELECT') {
+      if (el.value === '__custom__') return;
+      if (processed.has(path)) return;
+      const customInp = el.parentElement.querySelector('input[data-active="1"]');
+      if (customInp) { if (!processed.has(path)) { setByPath(result, path, customInp.value); processed.add(path); } return; }
+      processed.add(path);
+      setByPath(result, path, el.value);
+      return;
+    }
+    if (el.dataset.active === '1') {
+      if (!processed.has(path)) { setByPath(result, path, el.value); processed.add(path); }
+      return;
+    }
+    if (el.parentElement && el.parentElement.querySelector && el.parentElement.querySelector('[data-active="1"]')) return;
+    if (processed.has(path)) return;
+    processed.add(path);
+    if (type === 'number') { setByPath(result, path, el.value === '' ? 0 : Number(el.value)); }
+    else if (type === 'array_json') { try { setByPath(result, path, JSON.parse(el.value)); } catch { setByPath(result, path, el.value); } }
+    else { setByPath(result, path, el.value); }
+  });
+  return result;
+}
+
+function setByPath(obj, path, val) {
+  const parts = path.split('.');
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (typeof cur[parts[i]] !== 'object' || cur[parts[i]] === null) cur[parts[i]] = {};
+    cur = cur[parts[i]];
+  }
+  cur[parts[parts.length - 1]] = val;
+}
+
+/* =====================================================
+   Generate output
+===================================================== */
+function generateOutput() {
+  const data = collectValues();
+  const formatted = JSON.stringify(data, null, 2);
+  const minified = JSON.stringify(data);
+  const highlighted = syntaxHighlight(formatted);
+  currentOutput = { formatted, minified, highlighted };
+  outputMode = 'formatted';
+  const box = document.getElementById('output-box');
+  box.textContent = formatted;
+  document.querySelectorAll('.tab').forEach((t,i) => { t.className = 'tab' + (i===0?' active':''); });
+  document.getElementById('panel-output').style.display = '';
+  document.getElementById('panel-output').scrollIntoView({ behavior:'smooth', block:'start' });
+  setStep(3);
+  showToast('JSON 生成成功', '✓');
+}
+
+function syntaxHighlight(json) {
+  json = json.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+    if (/^"/.test(match)) {
+      if (/:$/.test(match)) return `<span class="jk">${match}</span>`;
+      return `<span class="js">${match}</span>`;
+    }
+    if (/true|false/.test(match)) return `<span class="jb">${match}</span>`;
+    if (/null/.test(match)) return `<span class="jnu">${match}</span>`;
+    return `<span class="jn">${match}</span>`;
+  });
+}
+
+function switchTab(el, mode) {
+  document.querySelectorAll('.tab').forEach(t => t.className = 'tab');
+  el.className = 'tab active';
+  outputMode = mode;
+  const box = document.getElementById('output-box');
+  if (mode === 'highlighted') {
+    box.innerHTML = currentOutput.highlighted;
+  } else {
+    box.textContent = currentOutput[mode];
+  }
+}
+
+/* =====================================================
+   Copy / Download
+===================================================== */
+function copyOutput() {
+  const text = outputMode === 'highlighted' ? currentOutput.formatted : currentOutput[outputMode];
+  navigator.clipboard.writeText(text).then(() => showToast('已复制到剪贴板', '⎘')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); showToast('已复制', '⎘');
+  });
+}
+
+function downloadOutput() {
+  const text = currentOutput.formatted;
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'output.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('文件下载中...', '↓');
+}
+
+/* =====================================================
+   Navigation
+===================================================== */
+function resetToInput() {
+  document.getElementById('panel-form').style.display = 'none';
+  document.getElementById('panel-input').style.display = '';
+  setStep(1);
+}
+function backToForm() {
+  document.getElementById('panel-output').style.display = 'none';
+  document.getElementById('panel-form').style.display = '';
+  setStep(2);
+}
+function resetAll() {
+  parsedData = null;
+  document.getElementById('json-input').value = '';
+  hideParsErr();
+  document.getElementById('panel-form').style.display = 'none';
+  document.getElementById('panel-output').style.display = 'none';
+  document.getElementById('panel-input').style.display = '';
+  setStep(1);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

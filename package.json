@@ -1,0 +1,33 @@
+{
+  "name": "openclaw-config-editor",
+  "version": "1.2.0",
+  "description": "A visual JSON configuration editor for OpenClaw projects with bilingual support",
+  "main": "openclaw-json-editor-2.0.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve -s ."
+  },
+  "keywords": [
+    "json",
+    "editor",
+    "config",
+    "openclaw",
+    "visual",
+    "bilingual",
+    "chinese",
+    "english"
+  ],
+  "author": "Waing",
+  "license": "MIT",
+  "dependencies": {
+    "serve": "^14.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/waingspace/OpenClaw-ConfigEditor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/waingspace/OpenClaw-ConfigEditor/issues"
+  },
+  "homepage": "https://github.com/waingspace/OpenClaw-ConfigEditor#readme"
+}

@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSON Visual Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  /* surfaces */
+  --bg:      #0d0f14;
+  --bg2:     #13151c;
+  --surface: #1a1d28;
+  --surf2:   #222638;
+  --surf3:   #2a2f46;
+
+  /* borders */
+  --b1: rgba(255,255,255,0.06);
+  --b2: rgba(255,255,255,0.12);
+  --b3: rgba(255,255,255,0.20);
+
+  /* accent palette */
+  --ac:   #6c63ff;
+  --ac2:  #a78bfa;
+  --ac3:  #38bdf8;
+  --ac4:  #34d399;
+  --ac5:  #fb923c;
+  --pink: #f9a8d4;
+
+  /* ── Typography scale ──────────────────────────
+     T1  Page title          28px / 800 / #ffffff
+     T2  Section / card hdr  13px / 600 / #9da3b4  CAPS + tracking
+     T3  Field key (normal)  15px / 600 / #c8cde0
+     T3+ Field key (import.) 18px / 700 / #ffffff
+     T4  Input / value       14px / 400 / #e8eaf0
+     T5  Meta / hint / desc  11.5px / 400 / #5a6178
+  ── */
+  --t1-size: 28px;  --t1-weight: 800; --t1-color: #ffffff;
+  --t2-size: 11.5px; --t2-weight: 600; --t2-color: #6a7191;
+  --t3-size: 15px;  --t3-weight: 600; --t3-color: #c8cde0;
+  --t3i-size:18px;  --t3i-weight:700; --t3i-color:#ffffff;
+  --t4-size: 14px;  --t4-weight: 400; --t4-color: #e8eaf0;
+  --t5-size: 11.5px;--t5-weight: 400; --t5-color: #4e5470;
+
+  /* fonts */
+  --fd: 'Syne', sans-serif;
+  --fb: 'DM Sans', sans-serif;
+  --fm: 'DM Mono', monospace;
+
+  /* radii */
+  --r:   8px;
+  --rl:  14px;
+  --rxl: 20px;
+
+  --glow: 0 0 0 1px rgba(108,99,255,0.3), 0 4px 20px rgba(108,99,255,0.12);
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
+html { scroll-behavior:smooth }
+body {
+  background:var(--bg); color:var(--t4-color);
+  font-family:var(--fb); font-size:var(--t4-size);
+  font-weight:var(--t4-weight); line-height:1.6;
+  min-height:100vh; overflow-x:hidden;
+}
+
+/* bg orbs */
+body::before { content:''; position:fixed; top:-220px; left:-180px; width:580px; height:580px; background:radial-gradient(circle,rgba(108,99,255,0.07) 0%,transparent 68%); pointer-events:none; z-index:0 }
+body::after  { content:''; position:fixed; bottom:-160px; right:-120px; width:480px; height:480px; background:radial-gradient(circle,rgba(56,189,248,0.05) 0%,transparent 68%); pointer-events:none; z-index:0 }
+
+.page { position:relative; z-index:1; max-width:880px; margin:0 auto; padding:40px 24px 90px }
+
+/* ══════════════════════════════════
+   HEADER — T1 zone
+══════════════════════════════════ */
+.header { display:flex; align-items:center; gap:16px; margin-bottom:42px }
+.logo {
+  width:46px; height:46px;
+  background:linear-gradient(135deg,var(--ac),var(--ac3));
+  border-radius:13px; display:flex; align-items:center; justify-content:center;
+  font-size:20px; flex-shrink:0; box-shadow:0 4px 18px rgba(108,99,255,0.4);
+}
+.header-text { flex:1 }
+/* T1 — page title */
+.header-text h1 {
+  font-family:var(--fd);
+  font-size:var(--t1-size);
+  font-weight:var(--t1-weight);
+  color:var(--t1-color);
+  letter-spacing:-0.5px;
+  line-height:1.1;
+}
+/* T5 — subtitle (clearly subordinate) */
+.header-text p {
+  font-size:var(--t5-size);
+  font-weight:var(--t5-weight);
+  color:var(--t5-color);
+  margin-top:5px;
+  letter-spacing:0.1px;
+}
+
+/* lang switch */
+.lang-btn { display:flex; align-items:center; background:var(--surf2); border:1px solid var(--b2); border-radius:20px; padding:3px; gap:2px; flex-shrink:0 }
+.lang-opt {
+  padding:5px 14px; border-radius:16px;
+  font-size:11.5px; font-family:var(--fd); font-weight:700;
+  cursor:pointer; color:var(--t2-color); transition:all 0.18s; white-space:nowrap;
+  letter-spacing:0.4px;
+}
+.lang-opt.active { background:var(--ac); color:#fff; box-shadow:0 2px 10px rgba(108,99,255,0.4) }
+
+/* ══════════════════════════════════
+   STEPS — T2 zone
+══════════════════════════════════ */
+.steps-bar { display:flex; align-items:center; margin-bottom:32px }
+.step-item {
+  display:flex; align-items:center; gap:8px;
+  /* T2 styling */
+  font-size:var(--t2-size); font-weight:var(--t2-weight);
+  font-family:var(--fd); color:var(--t2-color);
+  letter-spacing:0.8px; text-transform:uppercase;
+  transition:color 0.3s;
+}
+.step-item.active { color:var(--ac2) }
+.step-item.done   { color:var(--ac4) }
+.step-dot {
+  width:24px; height:24px; border-radius:50%;
+  border:1.5px solid var(--b2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-family:var(--fm); font-weight:500;
+  background:var(--surface); transition:all 0.3s; flex-shrink:0;
+}
+.step-item.active .step-dot { border-color:var(--ac); background:rgba(108,99,255,0.2); color:var(--ac2); box-shadow:0 0 10px rgba(108,99,255,0.3) }
+.step-item.done   .step-dot { border-color:var(--ac4); background:rgba(52,211,153,0.15); color:var(--ac4) }
+.step-line { flex:1; height:1px; background:var(--b1); margin:0 10px; min-width:20px }
+
+/* ══════════════════════════════════
+   CARD
+══════════════════════════════════ */
+.card {
+  background:var(--surface);
+  border:1px solid var(--b1);
+  border-radius:var(--rxl);
+  padding:28px 30px;
+  margin-bottom:20px;
+  animation:fadeUp 0.32s ease both;
+}
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
+
+/* T2 — card / section header */
+.card-title {
+  display:flex; align-items:center; gap:9px;
+  margin-bottom:20px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--b1);
+  font-family:var(--fd);
+  font-size:var(--t2-size);
+  font-weight:var(--t2-weight);
+  color:var(--t2-color);
+  letter-spacing:1.2px;
+  text-transform:uppercase;
+}
+.card-icon {
+  width:22px; height:22px;
+  background:var(--surf3);
+  border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; flex-shrink:0;
+}
+
+/* ══════════════════════════════════
+   TEXTAREA
+══════════════════════════════════ */
+.json-textarea {
+  width:100%; min-height:190px;
+  background:var(--bg2); border:1px solid var(--b1); border-radius:var(--rl);
+  padding:15px 17px;
+  font-family:var(--fm);
+  /* T4 for input content */
+  font-size:13px; line-height:1.75; color:var(--t4-color);
+  resize:vertical; outline:none; transition:border-color 0.2s,box-shadow 0.2s;
+}
+.json-textarea:focus    { border-color:rgba(108,99,255,0.45); box-shadow:var(--glow) }
+.json-textarea::placeholder { color:var(--t5-color) }
+
+/* ══════════════════════════════════
+   BUTTONS
+══════════════════════════════════ */
+.btn-row { display:flex; gap:9px; margin-top:16px; flex-wrap:wrap; align-items:center }
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 20px; border-radius:var(--r);
+  font-family:var(--fd); font-size:12.5px; font-weight:700;
+  cursor:pointer; border:1px solid transparent;
+  transition:all 0.18s; letter-spacing:0.3px; white-space:nowrap;
+}
+.btn:active { transform:scale(0.97) }
+.btn-primary   { background:linear-gradient(135deg,var(--ac),#8b5cf6); color:#fff; box-shadow:0 4px 16px rgba(108,99,255,0.32) }
+.btn-primary:hover   { box-shadow:0 6px 24px rgba(108,99,255,0.48); transform:translateY(-1px) }
+.btn-secondary { background:var(--surf2); color:var(--t3-color); border-color:var(--b2) }
+.btn-secondary:hover { background:var(--surf3); color:var(--t1-color) }
+.btn-success   { background:linear-gradient(135deg,#059669,var(--ac4)); color:#fff; box-shadow:0 4px 14px rgba(52,211,153,0.28) }
+.btn-success:hover   { box-shadow:0 6px 20px rgba(52,211,153,0.44); transform:translateY(-1px) }
+.btn-ghost     { background:transparent; color:var(--t5-color); border-color:var(--b1) }
+.btn-ghost:hover     { color:var(--t2-color); border-color:var(--b2) }
+
+/* ══════════════════════════════════
+   ERROR
+══════════════════════════════════ */
+.msg-err {
+  display:none; align-items:flex-start; gap:8px; margin-top:10px;
+  padding:9px 13px; background:rgba(248,113,113,0.09);
+  border:1px solid rgba(248,113,113,0.22); border-radius:var(--r);
+  font-size:var(--t5-size); color:#f87171; font-family:var(--fm);
+}
+.msg-err.visible { display:flex }
+
+/* ══════════════════════════════════
+   STATS CHIPS — T5 zone
+══════════════════════════════════ */
+.stats-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:20px }
+.stat-chip {
+  padding:3px 10px;
+  background:var(--surf2); border:1px solid var(--b1); border-radius:20px;
+  font-size:var(--t5-size); color:var(--t5-color);
+  font-family:var(--fm);
+  display:flex; align-items:center; gap:5px;
+}
+.stat-chip .dot { width:5px; height:5px; border-radius:50% }
+
+/* ══════════════════════════════════
+   FORM FIELDS — T3 / T4 / T5
+══════════════════════════════════ */
+.form-grid { display:grid; gap:0 }
+
+/* ── Field wrapper ── */
+.field {
+  display:flex; flex-direction:column;
+  padding:16px 0;
+  border-bottom:1px solid var(--b1);
+}
+.field:last-child { border-bottom:none; padding-bottom:0 }
+.field:first-child { padding-top:0 }
+
+/* ── Field header row ── */
+.field-hdr {
+  display:flex; align-items:baseline; gap:10px;
+  margin-bottom:4px;
+}
+
+/* T3 — normal field key */
+.field-key {
+  font-family:var(--fd);
+  font-size:var(--t3-size);
+  font-weight:var(--t3-weight);
+  color:var(--t3-color);
+  letter-spacing:-0.1px;
+  line-height:1.2;
+  flex-shrink:0;
+}
+/* T3+ — important field key (bigger, brighter) */
+.field-key.key-important {
+  font-size:var(--t3i-size);
+  font-weight:var(--t3i-weight);
+  color:var(--t3i-color);
+  letter-spacing:-0.3px;
+}
+
+/* T5 — type badge, right side */
+.ftype {
+  font-size:10px; font-family:var(--fm);
+  padding:2px 7px; border-radius:20px; border:1px solid;
+  margin-left:auto; flex-shrink:0; line-height:1.5;
+}
+.ft-str  { color:var(--ac3); border-color:rgba(56,189,248,0.25);  background:rgba(56,189,248,0.06) }
+.ft-num  { color:var(--ac5); border-color:rgba(251,146,60,0.25);  background:rgba(251,146,60,0.06) }
+.ft-bool { color:var(--ac4); border-color:rgba(52,211,153,0.25);  background:rgba(52,211,153,0.06) }
+.ft-arr  { color:var(--ac2); border-color:rgba(167,139,250,0.25); background:rgba(167,139,250,0.06) }
+.ft-obj  { color:var(--pink);border-color:rgba(249,168,212,0.25); background:rgba(249,168,212,0.06) }
+
+/* T5 — description strip */
+.field-desc {
+  font-size:var(--t5-size);
+  font-weight:var(--t5-weight);
+  color:var(--t5-color);
+  line-height:1.55;
+  margin-bottom:8px;
+  padding-left:2px;
+  /* subtle left rule to separate from key */
+  border-left:1.5px solid rgba(108,99,255,0.28);
+  padding-left:9px;
+}
+
+/* T4 — inputs */
+.field input[type=text],
+.field input[type=number],
+.field select,
+.field textarea.small-ta {
+  background:var(--bg2); border:1px solid var(--b1); border-radius:var(--r);
+  padding:10px 13px;
+  font-family:var(--fb); font-size:var(--t4-size);
+  font-weight:var(--t4-weight); color:var(--t4-color);
+  outline:none; width:100%;
+  transition:border-color 0.2s,box-shadow 0.2s;
+  -webkit-appearance:none; appearance:none;
+}
+.field input:focus,
+.field select:focus,
+.field textarea.small-ta:focus {
+  border-color:rgba(108,99,255,0.45);
+  box-shadow:0 0 0 3px rgba(108,99,255,0.09);
+}
+.field select {
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%234e5470' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; cursor:pointer;
+}
+.field textarea.small-ta {
+  font-family:var(--fm); font-size:12.5px; line-height:1.65; min-height:88px; resize:vertical;
+}
+.field input::placeholder { color:var(--t5-color) }
+
+/* ── Radio / checkbox pills ── */
+.radio-group, .check-group { display:flex; flex-wrap:wrap; gap:7px }
+.radio-opt, .check-opt { display:flex; align-items:center }
+.radio-opt input[type=radio],
+.check-opt input[type=checkbox] { display:none }
+/* T4 for pill labels */
+.radio-opt label, .check-opt label {
+  padding:7px 16px;
+  background:var(--bg2); border:1px solid var(--b1); border-radius:20px;
+  font-size:var(--t4-size); font-weight:400;
+  color:var(--t4-color); cursor:pointer;
+  transition:all 0.17s; user-select:none;
+}
+.radio-opt input[type=radio]:checked  + label { background:rgba(52,211,153,0.14); border-color:rgba(52,211,153,0.38); color:var(--ac4) }
+.check-opt input[type=checkbox]:checked + label { background:rgba(108,99,255,0.14); border-color:rgba(108,99,255,0.38); color:var(--ac2) }
+.radio-opt label:hover, .check-opt label:hover { border-color:var(--b2); color:var(--t1-color) }
+
+/* ── Add-item row ── */
+.add-row { display:flex; gap:8px; margin-top:9px }
+.add-row input {
+  flex:1; background:var(--bg2); border:1px solid var(--b1); border-radius:var(--r);
+  padding:7px 12px; font-size:var(--t4-size); color:var(--t4-color); outline:none;
+}
+.add-row input::placeholder { color:var(--t5-color) }
+.add-row input:focus { border-color:rgba(108,99,255,0.45) }
+.btn-add {
+  padding:7px 13px; background:var(--surf2); border:1px dashed var(--b2); border-radius:var(--r);
+  color:var(--t5-color); font-size:12px; cursor:pointer; transition:all 0.17s;
+  font-family:var(--fd); font-weight:600; white-space:nowrap;
+}
+.btn-add:hover { border-color:var(--ac); color:var(--ac2) }
+
+/* ══════════════════════════════════
+   NESTED OBJECT CARD
+══════════════════════════════════ */
+.nested-card {
+  background:var(--bg2); border:1px solid var(--b1);
+  border-radius:var(--rl); padding:16px 18px; margin-top:6px;
+}
+.nested-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:0; padding-bottom:10px; border-bottom:1px solid var(--b1);
+}
+/* T2 — nested section label */
+.nested-title {
+  font-family:var(--fd);
+  font-size:var(--t2-size); font-weight:var(--t2-weight);
+  color:var(--t2-color); letter-spacing:1px; text-transform:uppercase;
+}
+/* T5 — nested count */
+.nested-cnt {
+  font-size:var(--t5-size); color:var(--t5-color);
+  font-family:var(--fm); background:var(--surf3);
+  padding:2px 8px; border-radius:20px;
+}
+
+/* ══════════════════════════════════
+   OUTPUT
+══════════════════════════════════ */
+.tabs {
+  display:flex; gap:3px; padding:3px;
+  background:var(--bg2); border-radius:var(--r);
+  width:fit-content; margin-bottom:12px;
+}
+/* T5 for tab labels */
+.tab {
+  padding:5px 15px; border-radius:6px;
+  font-size:var(--t5-size); font-family:var(--fd); font-weight:700;
+  cursor:pointer; color:var(--t5-color); transition:all 0.17s;
+  letter-spacing:0.5px; text-transform:uppercase;
+}
+.tab:hover   { color:var(--t2-color) }
+.tab.active  { background:var(--surf3); color:var(--t4-color) }
+
+/* T4 (mono) for output content */
+.output-box {
+  background:var(--bg); border:1px solid var(--b1); border-radius:var(--rl);
+  padding:18px 20px; font-family:var(--fm);
+  font-size:13px; line-height:1.75; color:#a9b1d6;
+  white-space:pre; overflow:auto; max-height:420px;
+}
+.jk{color:#7aa2f7}.js{color:#9ece6a}.jn{color:#ff9e64}.jb{color:#bb9af7}.jnu{color:#f7768e}
+
+/* ══════════════════════════════════
+   TOAST
+══════════════════════════════════ */
+.toast {
+  position:fixed; bottom:28px; right:28px;
+  background:var(--surf3); border:1px solid var(--b2); border-radius:var(--r);
+  padding:10px 17px; font-size:13px;
+  display:flex; align-items:center; gap:8px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  z-index:999; transform:translateY(72px); opacity:0;
+  transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1); pointer-events:none;
+}
+.toast.show { transform:translateY(0); opacity:1 }
+
+@media(max-width:580px) {
+  .page { padding:20px 14px 60px }
+  .card { padding:20px 16px }
+  .steps-bar { display:none }
+  .header-text h1 { font-size:22px }
+}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surf3);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">⬡</div>
+    <div class="header-text">
+      <h1 data-i18n="title">JSON 可视化编辑器</h1>
+      <p data-i18n="subtitle">将 JSON 转换为可交互表单，编辑后还原为标准 JSON</p>
+    </div>
+    <div class="lang-btn">
+      <div class="lang-opt active" onclick="setLang('zh')">中文</div>
+      <div class="lang-opt" onclick="setLang('en')">EN</div>
+    </div>
+  </header>
+
+  <!-- Steps -->
+  <div class="steps-bar">
+    <div class="step-item active" id="step-ind-1"><div class="step-dot">1</div><span data-i18n="step1">导入</span></div>
+    <div class="step-line"></div>
+    <div class="step-item" id="step-ind-2"><div class="step-dot">2</div><span data-i18n="step2">编辑</span></div>
+    <div class="step-line"></div>
+    <div class="step-item" id="step-ind-3"><div class="step-dot">3</div><span data-i18n="step3">导出</span></div>
+  </div>
+
+  <!-- Panel 1: Input -->
+  <div id="panel-input">
+    <div class="card">
+      <div class="card-title"><div class="card-icon">{ }</div><span data-i18n="inputTitle">输入</span></div>
+      <textarea class="json-textarea" id="json-input"></textarea>
+      <div class="msg-err" id="parse-err"><span>⚠</span><span id="parse-err-msg"></span></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="parseJSON()">▶ <span data-i18n="btnParse">解析并生成表单</span></button>
+        <button class="btn btn-secondary" onclick="loadSample()"><span data-i18n="btnSample">加载示例数据</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel 2: Form -->
+  <div id="panel-form" style="display:none">
+    <div class="card">
+      <div class="card-title"><div class="card-icon">✏</div><span data-i18n="formTitle">编辑</span></div>
+      <div class="stats-bar" id="stats-bar"></div>
+      <div class="form-grid" id="form-container"></div>
+      <div class="btn-row" style="margin-top:20px;padding-top:18px;border-top:1px solid var(--b1)">
+        <button class="btn btn-success" onclick="generateOutput()">⬇ <span data-i18n="btnGenerate">生成 JSON</span></button>
+        <button class="btn btn-ghost"   onclick="resetToInput()"><span data-i18n="btnBackInput">← 返回输入</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel 3: Output -->
+  <div id="panel-output" style="display:none">
+    <div class="card">
+      <div class="card-title"><div class="card-icon">⬇</div><span data-i18n="outputTitle">输出</span></div>
+      <div class="tabs">
+        <div class="tab active"  onclick="switchTab(this,'formatted')"  data-i18n="tabFmt">格式化</div>
+        <div class="tab"         onclick="switchTab(this,'minified')"   data-i18n="tabMin">压缩</div>
+        <div class="tab"         onclick="switchTab(this,'highlighted')"data-i18n="tabHL">高亮</div>
+      </div>
+      <div class="output-box" id="output-box"></div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-primary"   onclick="copyOutput()">⎘ <span data-i18n="btnCopy">复制 JSON</span></button>
+        <button class="btn btn-secondary" onclick="downloadOutput()">↓ <span data-i18n="btnDown">下载文件</span></button>
+        <button class="btn btn-ghost"     onclick="backToForm()"><span data-i18n="btnBackForm">← 返回编辑</span></button>
+        <button class="btn btn-ghost"     onclick="resetAll()"><span data-i18n="btnReset">重新开始</span></button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="toast" id="toast"><span id="t-icon"></span><span id="t-msg"></span></div>
+
+<script>
+/* ═══════════════════════════════════════
+   i18n
+═══════════════════════════════════════ */
+const I18N = {
+  zh: {
+    title:'JSON 可视化编辑器',
+    subtitle:'将 JSON 转换为可交互表单，编辑后还原为标准 JSON',
+    step1:'导入', step2:'编辑', step3:'导出',
+    inputTitle:'输入',
+    inputPlaceholder:'粘贴您的 JSON 数据...\n{\n  "name": "Alice",\n  "enabled": true\n}',
+    btnParse:'解析并生成表单', btnSample:'加载示例数据',
+    formTitle:'编辑', btnGenerate:'生成 JSON', btnBackInput:'← 返回输入',
+    outputTitle:'输出', tabFmt:'格式化', tabMin:'压缩', tabHL:'高亮',
+    btnCopy:'复制 JSON', btnDown:'下载文件', btnBackForm:'← 返回编辑', btnReset:'重新开始',
+    sl:{ total:'字段', string:'文本', number:'数值', boolean:'布尔', array:'数组', object:'对象' },
+    trueLabel:'是 (true)', falseLabel:'否 (false)',
+    addPH:'添加新项目...', addBtn:'+ 添加',
+    customOpt:'✏ 自定义...', customPH:'输入自定义值',
+    nestedCnt: n => n + ' 个字段',
+    errEmpty:'请输入 JSON 内容', errSyntax:'JSON 语法错误：',
+    toastParsed: n => '解析成功，共 ' + n + ' 个字段',
+    toastGen:'JSON 生成成功', toastCopy:'已复制到剪贴板', toastDown:'文件下载中...',
+  },
+  en: {
+    title:'JSON Visual Editor',
+    subtitle:'Convert JSON to an interactive form, then export it back',
+    step1:'Import', step2:'Edit', step3:'Export',
+    inputTitle:'Input',
+    inputPlaceholder:'Paste your JSON here...\n{\n  "name": "Alice",\n  "enabled": true\n}',
+    btnParse:'Parse & Build Form', btnSample:'Load Sample',
+    formTitle:'Edit', btnGenerate:'Generate JSON', btnBackInput:'← Back',
+    outputTitle:'Output', tabFmt:'Formatted', tabMin:'Minified', tabHL:'Highlighted',
+    btnCopy:'Copy JSON', btnDown:'Download', btnBackForm:'← Back to Edit', btnReset:'Start Over',
+    sl:{ total:'fields', string:'string', number:'number', boolean:'bool', array:'array', object:'object' },
+    trueLabel:'Yes (true)', falseLabel:'No (false)',
+    addPH:'Add new item...', addBtn:'+ Add',
+    customOpt:'✏ Custom...', customPH:'Enter custom value',
+    nestedCnt: n => n + ' fields',
+    errEmpty:'Please enter JSON content', errSyntax:'JSON syntax error: ',
+    toastParsed: n => 'Parsed · ' + n + ' fields',
+    toastGen:'JSON generated', toastCopy:'Copied to clipboard', toastDown:'Downloading...',
+  }
+};
+
+let lang = 'zh';
+function t(k)        { const v=I18N[lang][k]; return typeof v==='string'?v:(v||k) }
+function tc(k,...a)  { const v=I18N[lang][k]; return typeof v==='function'?v(...a):v }
+
+function setLang(l) {
+  lang = l;
+  document.querySelectorAll('.lang-opt').forEach(el =>
+    el.classList.toggle('active',(l==='zh'&&el.textContent==='中文')||(l==='en'&&el.textContent==='EN'))
+  );
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v=I18N[lang][el.dataset.i18n]; if(v&&typeof v==='string') el.textContent=v;
+  });
+  document.getElementById('json-input').placeholder = t('inputPlaceholder');
+  if (parsedData && document.getElementById('panel-form').style.display!=='none') renderForm(parsedData);
+}
+
+/* ═══════════════════════════════════════
+   Field metadata
+═══════════════════════════════════════ */
+const FIELD_DESC = {
+  enabled:       {zh:'是否启用该功能或模块',                                    en:'Whether this feature or module is enabled'},
+  active:        {zh:'是否处于激活状态',                                         en:'Whether this entry is currently active'},
+  streaming:     {zh:'开启流式输出（逐字返回），适合实时对话场景',               en:'Enable streaming output (token-by-token), ideal for real-time chat'},
+  default:       {zh:'是否作为默认选项',                                         en:'Mark this as the default option'},
+  mode:          {zh:'运行模式，控制鉴权方式或连接行为',                         en:'Operating mode — controls auth style or connection behavior'},
+  provider:      {zh:'AI 模型提供商，决定调用哪个平台的 API 接口',              en:'AI model provider — which platform API to call'},
+  model:         {zh:'模型标识符或模型配置对象',                                 en:'Model identifier or model configuration object'},
+  id:            {zh:'唯一标识符，用于区分不同实体',                             en:'Unique identifier for this entity'},
+  name:          {zh:'显示名称，用于界面展示',                                   en:'Display name shown in the UI'},
+  contextWindow: {zh:'上下文窗口大小（token 数），越大可处理越长的输入',         en:'Context window in tokens — larger = supports longer inputs'},
+  maxTokens:     {zh:'单次响应最多生成的 token 数，影响回复长度上限',            en:'Max tokens per response — controls reply length cap'},
+  reasoning:     {zh:'启用推理/思考模式（消耗更多 token，适合复杂任务）',        en:'Enable reasoning mode (uses more tokens, best for complex tasks)'},
+  input:         {zh:'模型支持的输入类型，如 text（文本）、image（图片）',       en:'Supported input modalities, e.g. text, image'},
+  cost:          {zh:'API 调用费用配置，单位通常为每百万 token 的美元价格',      en:'API cost config — typically USD per million tokens'},
+  port:          {zh:'服务监听的端口号（1–65535）',                              en:'Port number the server listens on (1–65535)'},
+  host:          {zh:'服务绑定的主机地址，如 localhost 或具体 IP',               en:'Host address, e.g. localhost or a specific IP'},
+  bind:          {zh:'网络绑定范围：lan 局域网、localhost 仅本机、all 全网卡',   en:'Binding scope: lan, localhost, or all interfaces'},
+  baseUrl:       {zh:'API 基础 URL，所有请求以此为前缀',                         en:'Base URL prefix for all API requests'},
+  auth:          {zh:'鉴权配置，控制谁可以访问该服务',                           en:'Auth config — controls who can access this service'},
+  apiKey:        {zh:'API 密钥，支持 ${ENV_VAR} 格式引用环境变量',               en:'API key — use ${ENV_VAR} to reference environment variables'},
+  token:         {zh:'访问令牌，token 鉴权模式下使用',                           en:'Access token for token-based auth mode'},
+  workspace:     {zh:'Agent 工作目录，文件读写操作的根路径',                      en:'Agent workspace — root path for all file operations'},
+  timeoutSeconds:{zh:'任务执行超时限制（秒），超时后自动终止',                   en:'Task timeout in seconds — auto-terminates on expiry'},
+  profile:       {zh:'工具集：full 全部工具、coding 编程工具、minimal 最小集合', en:'Tool profile: full, coding, or minimal'},
+  connectionMode:{zh:'与消息平台的连接方式：websocket 长连接、polling 轮询',     en:'Connection mode: websocket (long-poll) or polling'},
+  appId:         {zh:'平台应用 ID，支持 ${ENV_VAR} 环境变量格式',               en:'Platform App ID — supports ${ENV_VAR} env variable'},
+  appSecret:     {zh:'平台应用密钥（请保密存储），支持 ${ENV_VAR} 格式',         en:'Platform App Secret (keep secure) — supports ${ENV_VAR}'},
+  security:      {zh:'执行安全级别：full 完全沙箱、standard 标准、minimal 最低', en:'Security level: full sandbox, standard, or minimal'},
+  ask:           {zh:'执行敏感操作前是否询问用户（off 表示不询问）',              en:'Ask user before sensitive operations (off = skip)'},
+  level:         {zh:'日志级别，控制输出详细程度：debug / info / warn / error',   en:'Log level: debug, info, warn, or error'},
+};
+
+const IMPORTANT_KEYS = new Set(['enabled','streaming','model','provider','mode','contextWindow','maxTokens','port','apiKey','workspace','baseUrl','reasoning']);
+const SKIP_TOP       = new Set(['lastTouchedVersion','lastTouchedAt','lastRunAt','lastRunVersion','lastRunCommand','lastRunMode','agentDir']);
+const BOOL_KEYS      = ['enabled','active','streaming','default','reasoning','ask','required','checked','selected','visible'];
+const ENUM_MAP = {
+  mode:['api_key','token','local','gateway','merge','replace','websocket','polling','sse','full','coding','minimal'],
+  provider:['modelstudio','openai','anthropic','azure','groq','cohere'],
+  api:['openai-completions','anthropic','azure-openai','groq'],
+  connectionMode:['websocket','polling','sse'],
+  bind:['lan','localhost','all','0.0.0.0'],
+  profile:['full','coding','minimal','standard'],
+  security:['full','standard','minimal','none'],
+  level:['debug','info','warn','error'],
+  theme:['light','dark','auto'],
+  status:['active','inactive','pending','disabled'],
+};
+
+/* ═══════════════════════════════════════
+   State
+═══════════════════════════════════════ */
+let parsedData = null;
+let currentOutput = {formatted:'',minified:'',highlighted:''};
+let outputMode = 'formatted';
+let fieldCount = {};
+
+/* ═══════════════════════════════════════
+   Toast
+═══════════════════════════════════════ */
+let toastTimer;
+function showToast(msg, icon='✓') {
+  document.getElementById('t-msg').textContent  = msg;
+  document.getElementById('t-icon').textContent = icon;
+  const el = document.getElementById('toast');
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2600);
+}
+
+/* ═══════════════════════════════════════
+   Steps
+═══════════════════════════════════════ */
+function setStep(n) {
+  for (let i=1;i<=3;i++) {
+    const el = document.getElementById('step-ind-'+i);
+    el.className = 'step-item'+(i<n?' done':i===n?' active':'');
+    el.querySelector('.step-dot').textContent = i<n?'✓':String(i);
+  }
+}
+
+/* ═══════════════════════════════════════
+   Sample
+═══════════════════════════════════════ */
+function loadSample() {
+  document.getElementById('json-input').value = JSON.stringify({
+    server:  {host:'localhost',port:18789,mode:'local',enabled:true,streaming:true},
+    auth:    {mode:'api_key',required:true,apiKey:'${MY_API_KEY}'},
+    model:   {id:'qwen3-max',provider:'modelstudio',contextWindow:262144,maxTokens:65536,reasoning:false,input:['text','image']},
+    logging: {level:'info',enabled:true}
+  },null,2);
+  hideParsErr();
+}
+
+/* ═══════════════════════════════════════
+   Parse
+═══════════════════════════════════════ */
+function parseJSON() {
+  const raw = document.getElementById('json-input').value.trim();
+  hideParsErr();
+  if (!raw) { showParsErr(t('errEmpty')); return; }
+  try {
+    parsedData = JSON.parse(raw);
+    fieldCount = {total:0,string:0,number:0,boolean:0,array:0,object:0};
+    renderForm(parsedData);
+    document.getElementById('panel-input').style.display  = 'none';
+    document.getElementById('panel-form').style.display   = '';
+    document.getElementById('panel-output').style.display = 'none';
+    setStep(2);
+    showToast(tc('toastParsed',fieldCount.total),'✓');
+  } catch(e) { showParsErr(t('errSyntax')+e.message); }
+}
+function showParsErr(msg) {
+  document.getElementById('parse-err-msg').textContent = msg;
+  document.getElementById('parse-err').classList.add('visible');
+}
+function hideParsErr() { document.getElementById('parse-err').classList.remove('visible') }
+
+/* ═══════════════════════════════════════
+   Render form
+═══════════════════════════════════════ */
+function renderForm(data) {
+  const c = document.getElementById('form-container');
+  c.innerHTML = '';
+  buildFields(data,'',c,0,true);
+
+  const sl = I18N[lang].sl;
+  const defs = [
+    {k:'total',col:'var(--ac2)'},{k:'string',col:'var(--ac3)'},
+    {k:'number',col:'var(--ac5)'},{k:'boolean',col:'var(--ac4)'},
+    {k:'array',col:'var(--ac2)'},{k:'object',col:'var(--pink)'},
+  ];
+  document.getElementById('stats-bar').innerHTML =
+    defs.filter(d=>fieldCount[d.k]>0).map(d=>
+      `<div class="stat-chip"><span class="dot" style="background:${d.col}"></span>${fieldCount[d.k]} ${sl[d.k]}</div>`
+    ).join('');
+}
+
+function buildFields(obj, prefix, container, depth, isTop) {
+  Object.entries(obj).forEach(([key,val]) => {
+    if (isTop && SKIP_TOP.has(key)) return;
+    const path = prefix ? prefix+'.'+key : key;
+    fieldCount.total++;
+
+    if (val===null||val===undefined) {
+      appendTextField(container,key,path,'');
+    } else if (typeof val==='boolean'||BOOL_KEYS.includes(key)) {
+      fieldCount.boolean++;
+      appendBoolField(container,key,path,typeof val==='boolean'?val:!!val);
+    } else if (typeof val==='number') {
+      fieldCount.number++;
+      appendNumberField(container,key,path,val);
+    } else if (typeof val==='string') {
+      fieldCount.string++;
+      ENUM_MAP[key] ? appendSelectField(container,key,path,val,ENUM_MAP[key])
+                    : appendTextField(container,key,path,val);
+    } else if (Array.isArray(val)) {
+      fieldCount.array++;
+      appendArrayField(container,key,path,val);
+    } else if (typeof val==='object') {
+      fieldCount.object++;
+      appendObjectField(container,key,path,val,depth);
+      fieldCount.total--;
+    } else {
+      appendTextField(container,key,path,String(val));
+    }
+  });
+}
+
+/* ── Field builder helper ── */
+function mkField(key, path, ftCls, ftLabel) {
+  const d = document.createElement('div'); d.className='field';
+
+  // header: key + type badge
+  const hdr = document.createElement('div'); hdr.className='field-hdr';
+  const kEl = document.createElement('span');
+  kEl.className = 'field-key'+(IMPORTANT_KEYS.has(key)?' key-important':'');
+  kEl.textContent = key;
+  hdr.appendChild(kEl);
+  if (ftCls) {
+    const b = document.createElement('span'); b.className='ftype '+ftCls; b.textContent=ftLabel;
+    hdr.appendChild(b);
+  }
+  d.appendChild(hdr);
+
+  // description (T5)
+  const desc = FIELD_DESC[key];
+  if (desc) {
+    const el = document.createElement('div'); el.className='field-desc';
+    el.textContent = desc[lang]||desc.zh;
+    el.dataset.descKey = key;
+    d.appendChild(el);
+  }
+  return d;
+}
+
+function appendTextField(container,key,path,val) {
+  const d=mkField(key,path,'ft-str','string');
+  const i=document.createElement('input');i.type='text';i.value=val;
+  i.dataset.path=path;i.dataset.type='string';
+  d.appendChild(i);container.appendChild(d);
+}
+function appendNumberField(container,key,path,val) {
+  const d=mkField(key,path,'ft-num','number');
+  const i=document.createElement('input');i.type='number';i.value=val;i.step='any';
+  i.dataset.path=path;i.dataset.type='number';
+  d.appendChild(i);container.appendChild(d);
+}
+function appendBoolField(container,key,path,val) {
+  const d=mkField(key,path,'ft-bool','boolean');
+  const g=document.createElement('div');g.className='radio-group';
+  const uid='r_'+path.replace(/[^a-z0-9]/gi,'_')+'_'+Math.random().toString(36).slice(2,6);
+  [[true,t('trueLabel')],[false,t('falseLabel')]].forEach(([bv,lbl])=>{
+    const w=document.createElement('div');w.className='radio-opt';
+    const r=document.createElement('input');r.type='radio';r.name=uid;r.id=uid+bv;
+    r.value=String(bv);r.dataset.path=path;r.dataset.type='boolean';
+    if(bv===val)r.checked=true;
+    const lb=document.createElement('label');lb.htmlFor=uid+bv;lb.textContent=lbl;
+    w.appendChild(r);w.appendChild(lb);g.appendChild(w);
+  });
+  d.appendChild(g);container.appendChild(d);
+}
+function appendSelectField(container,key,path,val,opts) {
+  const d=mkField(key,path,'ft-str','enum');
+  const sel=document.createElement('select');sel.dataset.path=path;sel.dataset.type='string';
+  [...new Set([val,...opts])].forEach(o=>{
+    const op=document.createElement('option');op.value=o;op.textContent=o;if(o===val)op.selected=true;sel.appendChild(op);
+  });
+  const cOpt=document.createElement('option');cOpt.value='__custom__';cOpt.textContent=t('customOpt');sel.appendChild(cOpt);
+  const cInp=document.createElement('input');cInp.type='text';cInp.style.display='none';cInp.style.marginTop='8px';
+  cInp.dataset.path=path;cInp.dataset.type='string';cInp.placeholder=t('customPH');
+  sel.onchange=()=>{const ic=sel.value==='__custom__';cInp.style.display=ic?'':'none';ic?(cInp.dataset.active='1',cInp.focus()):delete cInp.dataset.active;};
+  d.appendChild(sel);d.appendChild(cInp);container.appendChild(d);
+}
+function appendArrayField(container,key,path,val) {
+  const simple=val.every(v=>typeof v==='string'||typeof v==='number'||typeof v==='boolean');
+  if (simple&&val.length<=15) {
+    const d=mkField(key,path,'ft-arr',`array[${val.length}]`);
+    const g=document.createElement('div');g.className='check-group';
+    val.forEach(v=>{
+      const uid='cb_'+path.replace(/[^a-z0-9]/gi,'_')+'_'+String(v).replace(/\W/g,'_')+'_'+Math.random().toString(36).slice(2,5);
+      const w=document.createElement('div');w.className='check-opt';
+      const cb=document.createElement('input');cb.type='checkbox';cb.id=uid;cb.value=String(v);
+      cb.dataset.path=path;cb.dataset.type='array_item';cb.checked=true;
+      const lb=document.createElement('label');lb.htmlFor=uid;lb.textContent=String(v);
+      w.appendChild(cb);w.appendChild(lb);g.appendChild(w);
+    });
+    const ar=document.createElement('div');ar.className='add-row';
+    const ai=document.createElement('input');ai.type='text';ai.placeholder=t('addPH');
+    const ab=document.createElement('button');ab.className='btn-add';ab.textContent=t('addBtn');
+    ab.onclick=()=>{
+      const v=ai.value.trim();if(!v)return;
+      const uid2='cb_'+path.replace(/[^a-z0-9]/gi,'_')+'_'+v.replace(/\W/g,'_')+'_'+Math.random().toString(36).slice(2,5);
+      const w2=document.createElement('div');w2.className='check-opt';
+      const c2=document.createElement('input');c2.type='checkbox';c2.id=uid2;c2.value=v;
+      c2.dataset.path=path;c2.dataset.type='array_item';c2.checked=true;
+      const l2=document.createElement('label');l2.htmlFor=uid2;l2.textContent=v;
+      w2.appendChild(c2);w2.appendChild(l2);g.appendChild(w2);ai.value='';
+    };
+    ai.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();ab.click();}};
+    ar.appendChild(ai);ar.appendChild(ab);d.appendChild(g);d.appendChild(ar);container.appendChild(d);
+  } else {
+    const d=mkField(key,path,'ft-arr',`array[${val.length}]`);
+    const ta=document.createElement('textarea');ta.className='small-ta';
+    ta.dataset.path=path;ta.dataset.type='array_json';ta.value=JSON.stringify(val,null,2);
+    d.appendChild(ta);container.appendChild(d);
+  }
+}
+function appendObjectField(container,key,path,val,depth) {
+  const sub=Object.keys(val).length;
+  const d=document.createElement('div');d.className='field';
+  const hdr=document.createElement('div');hdr.className='field-hdr';
+  const kEl=document.createElement('span');
+  kEl.className='field-key'+(IMPORTANT_KEYS.has(key)?' key-important':'');kEl.textContent=key;
+  const b=document.createElement('span');b.className='ftype ft-obj';b.textContent='object';
+  hdr.appendChild(kEl);hdr.appendChild(b);d.appendChild(hdr);
+
+  const desc=FIELD_DESC[key];
+  if(desc){const el=document.createElement('div');el.className='field-desc';el.textContent=desc[lang]||desc.zh;el.dataset.descKey=key;d.appendChild(el);}
+
+  const nest=document.createElement('div');nest.className='nested-card';
+  const nh=document.createElement('div');nh.className='nested-hdr';
+  const nt=document.createElement('span');nt.className='nested-title';nt.textContent=key;
+  const nc=document.createElement('span');nc.className='nested-cnt';nc.textContent=tc('nestedCnt',sub);
+  nh.appendChild(nt);nh.appendChild(nc);nest.appendChild(nh);
+  const sg=document.createElement('div');sg.className='form-grid';
+  buildFields(val,path,sg,depth+1,false);
+  nest.appendChild(sg);d.appendChild(nest);container.appendChild(d);
+}
+
+/* ═══════════════════════════════════════
+   Collect
+═══════════════════════════════════════ */
+function collectValues() {
+  const result={},processed=new Set();
+  document.getElementById('form-container').querySelectorAll('[data-path][data-type]').forEach(el=>{
+    const path=el.dataset.path,type=el.dataset.type;
+    if(!path||!type)return;
+    if(type==='array_item'){
+      if(processed.has(path))return;processed.add(path);
+      const items=[...document.getElementById('form-container').querySelectorAll(`[data-path="${CSS.escape(path)}"][data-type="array_item"]`)];
+      setByPath(result,path,items.filter(i=>i.checked).map(i=>i.value));return;
+    }
+    if(type==='boolean'){
+      if(processed.has(path))return;processed.add(path);
+      const chk=[...document.getElementById('form-container').querySelectorAll(`[data-path="${CSS.escape(path)}"][data-type="boolean"]`)].find(r=>r.checked);
+      if(chk)setByPath(result,path,chk.value==='true');return;
+    }
+    if(el.tagName==='SELECT'){
+      if(el.value==='__custom__'||processed.has(path))return;
+      const ci=el.parentElement.querySelector('input[data-active="1"]');
+      processed.add(path);setByPath(result,path,ci?ci.value:el.value);return;
+    }
+    if(el.dataset.active==='1'){if(!processed.has(path)){setByPath(result,path,el.value);processed.add(path);}return;}
+    if(el.parentElement?.querySelector?.('[data-active="1"]'))return;
+    if(processed.has(path))return;processed.add(path);
+    if(type==='number')setByPath(result,path,el.value===''?0:Number(el.value));
+    else if(type==='array_json'){try{setByPath(result,path,JSON.parse(el.value));}catch{setByPath(result,path,el.value);}}
+    else setByPath(result,path,el.value);
+  });
+  return result;
+}
+function setByPath(obj,path,val){
+  const parts=path.split('.');let cur=obj;
+  for(let i=0;i<parts.length-1;i++){if(typeof cur[parts[i]]!=='object'||cur[parts[i]]===null)cur[parts[i]]={};cur=cur[parts[i]];}
+  cur[parts[parts.length-1]]=val;
+}
+
+/* ═══════════════════════════════════════
+   Output
+═══════════════════════════════════════ */
+function generateOutput(){
+  const data=collectValues();
+  const fmt=JSON.stringify(data,null,2);
+  currentOutput={formatted:fmt,minified:JSON.stringify(data),highlighted:syntaxHighlight(fmt)};
+  outputMode='formatted';
+  document.getElementById('output-box').textContent=fmt;
+  document.querySelectorAll('.tab').forEach((t,i)=>t.className='tab'+(i===0?' active':''));
+  document.getElementById('panel-output').style.display='';
+  document.getElementById('panel-output').scrollIntoView({behavior:'smooth',block:'start'});
+  setStep(3);showToast(t('toastGen'),'✓');
+}
+function syntaxHighlight(json){
+  json=json.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return json.replace(/("(?:\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(?:\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,m=>{
+    if(/^"/.test(m))return/:$/.test(m)?`<span class="jk">${m}</span>`:`<span class="js">${m}</span>`;
+    if(/true|false/.test(m))return`<span class="jb">${m}</span>`;
+    if(/null/.test(m))return`<span class="jnu">${m}</span>`;
+    return`<span class="jn">${m}</span>`;
+  });
+}
+function switchTab(el,mode){
+  document.querySelectorAll('.tab').forEach(t=>t.className='tab');el.className='tab active';outputMode=mode;
+  const box=document.getElementById('output-box');
+  if(mode==='highlighted')box.innerHTML=currentOutput.highlighted;else box.textContent=currentOutput[mode];
+}
+function copyOutput(){
+  const txt=outputMode==='highlighted'?currentOutput.formatted:currentOutput[outputMode];
+  navigator.clipboard.writeText(txt).then(()=>showToast(t('toastCopy'),'⎘')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast(t('toastCopy'),'⎘');
+  });
+}
+function downloadOutput(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([currentOutput.formatted],{type:'application/json'}));
+  a.download='output.json';a.click();showToast(t('toastDown'),'↓');
+}
+
+/* ═══════════════════════════════════════
+   Nav
+═══════════════════════════════════════ */
+function resetToInput(){document.getElementById('panel-form').style.display='none';document.getElementById('panel-input').style.display='';setStep(1);}
+function backToForm(){document.getElementById('panel-output').style.display='none';document.getElementById('panel-form').style.display='';setStep(2);}
+function resetAll(){
+  parsedData=null;document.getElementById('json-input').value='';hideParsErr();
+  document.getElementById('panel-form').style.display='none';
+  document.getElementById('panel-output').style.display='none';
+  document.getElementById('panel-input').style.display='';
+  setStep(1);window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* init */
+document.getElementById('json-input').placeholder = t('inputPlaceholder');
+</script>
+</body>
+</html>
